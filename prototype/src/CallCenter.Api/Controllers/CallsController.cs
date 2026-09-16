@@ -1,51 +1,133 @@
+using CallCenter.Api.Models;
 using CallCenter.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CallCenter.Api.Controllers;
 
-public sealed record InboundCallRequest(string? From, string? To);
-
-public sealed record WrapUpRequest(string Disposition, string? Notes);
-
 /// <summary>
-/// Call handling.
+/// Call handling: everything an agent does to a call, and the two events that stand in for the
+/// telephone network.
 ///
 /// The agent id travels in the route because there is no sign-in token in this prototype. The
 /// server still refuses any command for a call that was not offered to that agent, so the rule
 /// holds even though the identity does not — that check belongs in the domain either way.
 /// </summary>
+[ApiController]
 [Route("api/calls")]
-public sealed class CallsController(CallCenterService service) : CallCenterControllerBase(service)
+[Produces("application/json")]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+public class CallsController : ControllerBase
 {
+    private readonly CallCenterService _callCenterService;
+    private readonly ILogger<CallsController> _logger;
+
+    public CallsController(CallCenterService callCenterService, ILogger<CallsController> logger)
+    {
+        _callCenterService = callCenterService;
+        _logger = logger;
+    }
+
     /// <summary>
-    /// Stands in for the telephone network. In production this is the carrier's webhook, and it is
-    /// the only action here that would change.
+    /// A customer calls in. This stands in for the telephone network: in production it is the
+    /// carrier's webhook, and it is the only action in this controller that would change.
     /// </summary>
     [HttpPost("inbound", Name = nameof(ReceiveInboundCall))]
-    public Task<ActionResult<Snapshot>> ReceiveInboundCall(InboundCallRequest request, CancellationToken ct) =>
-        RunAsync(() => Service.ReceiveInboundCallAsync(request.From ?? "", request.To ?? "", ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> ReceiveInboundCall(
+        [FromBody] InboundCallRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Inbound call from {From}.", request.From);
 
+        Snapshot snapshot = await _callCenterService.ReceiveInboundCallAsync(
+            request.From ?? string.Empty,
+            request.To ?? string.Empty,
+            cancellationToken);
+
+        return Ok(snapshot);
+    }
+
+    /// <summary>The agent picked up. Refused unless the call is still ringing on their desk.</summary>
     [HttpPost("{callId:guid}/answer/{agentId:guid}", Name = nameof(Answer))]
-    public Task<ActionResult<Snapshot>> Answer(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => Service.AnswerAsync(agentId, callId, ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> Answer(
+        Guid callId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Agent {AgentId} answered call {CallId}.", agentId, callId);
 
-    /// <summary>The agent did not pick up: the call is re-queued and they are made not-ready.</summary>
+        Snapshot snapshot = await _callCenterService.AnswerAsync(agentId, callId, cancellationToken);
+
+        return Ok(snapshot);
+    }
+
+    /// <summary>
+    /// The agent did not pick up. The call goes back into the queue and the agent is made
+    /// not-ready, so the platform does not immediately offer them the same call again.
+    /// </summary>
     [HttpPost("{callId:guid}/decline/{agentId:guid}", Name = nameof(Decline))]
-    public Task<ActionResult<Snapshot>> Decline(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => Service.DeclineAsync(agentId, callId, ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> Decline(
+        Guid callId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Agent {AgentId} declined call {CallId}.", agentId, callId);
 
+        Snapshot snapshot = await _callCenterService.DeclineAsync(agentId, callId, cancellationToken);
+
+        return Ok(snapshot);
+    }
+
+    /// <summary>Ends the conversation and moves the agent into wrap-up.</summary>
     [HttpPost("{callId:guid}/hang-up/{agentId:guid}", Name = nameof(HangUp))]
-    public Task<ActionResult<Snapshot>> HangUp(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => Service.HangUpAsync(agentId, callId, ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> HangUp(
+        Guid callId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Agent {AgentId} hung up call {CallId}.", agentId, callId);
 
-    /// <summary>Files the call. Refused without a disposition — wrap-up is part of the call.</summary>
+        Snapshot snapshot = await _callCenterService.HangUpAsync(agentId, callId, cancellationToken);
+
+        return Ok(snapshot);
+    }
+
+    /// <summary>
+    /// Files the call and returns the agent to the queue. Refused without a disposition —
+    /// wrap-up is part of the call, not an afterthought.
+    /// </summary>
     [HttpPost("{callId:guid}/wrap-up/{agentId:guid}", Name = nameof(CompleteWrapUp))]
-    public Task<ActionResult<Snapshot>> CompleteWrapUp(
-        Guid callId, Guid agentId, WrapUpRequest request, CancellationToken ct) =>
-        RunAsync(() => Service.CompleteWrapUpAsync(agentId, callId, request.Disposition, request.Notes, ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> CompleteWrapUp(
+        Guid callId,
+        Guid agentId,
+        [FromBody] WrapUpRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Agent {AgentId} filed call {CallId} as {Disposition}.", agentId, callId, request.Disposition);
 
-    /// <summary>The waiting caller hung up. Driven by a button, for the same reason as inbound.</summary>
+        Snapshot snapshot = await _callCenterService.CompleteWrapUpAsync(
+            agentId, callId, request.Disposition, request.Notes, cancellationToken);
+
+        return Ok(snapshot);
+    }
+
+    /// <summary>
+    /// The waiting caller hung up before anyone answered. Driven by a button for the same reason
+    /// as the inbound action above.
+    /// </summary>
     [HttpPost("{callId:guid}/abandon", Name = nameof(Abandon))]
-    public Task<ActionResult<Snapshot>> Abandon(Guid callId, CancellationToken ct) =>
-        RunAsync(() => Service.AbandonAsync(callId, ct));
+    [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Snapshot>> Abandon(Guid callId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Caller abandoned call {CallId}.", callId);
+
+        Snapshot snapshot = await _callCenterService.AbandonAsync(callId, cancellationToken);
+
+        return Ok(snapshot);
+    }
 }

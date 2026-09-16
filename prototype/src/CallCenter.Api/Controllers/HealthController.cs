@@ -1,8 +1,7 @@
+using CallCenter.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CallCenter.Api.Controllers;
-
-public sealed record HealthResponse(string Status, DateTimeOffset ServerTime);
 
 /// <summary>
 /// What a load balancer or a deployment script calls to decide whether this instance is ready to
@@ -12,9 +11,18 @@ public sealed record HealthResponse(string Status, DateTimeOffset ServerTime);
 [ApiController]
 [Route("health")]
 [Produces("application/json")]
-public sealed class HealthController : ControllerBase
+public class HealthController : ControllerBase
 {
-    [HttpGet]
+    [HttpGet(Name = nameof(GetHealth))]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
-    public ActionResult<HealthResponse> Get() => Ok(new HealthResponse("ok", DateTimeOffset.UtcNow));
+    public ActionResult<HealthResponse> GetHealth()
+    {
+        HealthResponse response = new HealthResponse
+        {
+            Status = "ok",
+            ServerTime = DateTimeOffset.UtcNow
+        };
+
+        return Ok(response);
+    }
 }

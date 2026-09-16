@@ -69,6 +69,8 @@ src/CallCenter.Api
   Services/CallCenterService.cs   the entire domain — queue, routing, state transitions
   Services/SnapshotPublisher.cs   how the new picture reaches the screens
   Controllers/                    the HTTP surface — MVC controllers, including /health
+  Models/                         request and response bodies
+  Filters/                        maps a refused command to a ProblemDetails response
   Hubs/CallCenterHub.cs           the live connection
 src/CallCenter.Web                Angular: sign-in, agent desktop, supervisor console
 tests/CallCenter.Tests            the routing rules
@@ -94,10 +96,16 @@ application depends on is in one method, the order middleware runs in is in the 
 is tangled up with startup work.
 
 Every endpoint is an MVC controller action — there are no minimal-API endpoints, not even
-`/health`, and not one inline route lambda anywhere — so there is one HTTP surface to reason
-about, one place where filters and
-authorisation attributes will go when they are needed, and one error shape: a refused command
-comes back as standard `ProblemDetails`, whose `detail` is written to be shown to the agent as-is.
+`/health`, and not one inline route lambda anywhere. The controllers are written the conventional
+way: constructor injection into `private readonly` fields, one `[Http...]`-attributed method per
+action with a full body, declared response types, and bound request models from `Models/`.
+
+They contain no `try`/`catch`. A refused command throws in the domain and
+`CallCenterExceptionFilter`, registered once in `Startup`, turns it into a standard
+`ProblemDetails` — same shape wherever it is thrown, and a new action cannot forget to handle it.
+The `detail` field is written to be shown to the agent as-is, and the `traceId` ties a complaint
+to a log line.
+
 Note what is *not* in the controllers: the rules. "You cannot finish a call without saying how it
 ended" lives in the service and is covered by a test, not in a validation attribute that only runs
 when the request happens to arrive over HTTP.

@@ -1,4 +1,5 @@
 using CallCenter.Api.Data;
+using CallCenter.Api.Filters;
 using CallCenter.Api.Hubs;
 using CallCenter.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,10 @@ public class Startup(IConfiguration configuration)
         services.AddSingleton<ISnapshotPublisher, SignalRSnapshotPublisher>();
         services.AddSingleton<CallCenterService>();
 
-        services.AddControllers();
+        // The exception filter is registered once, here, which is why no action in this project
+        // has a try/catch in it.
+        services.AddControllers(options => options.Filters.Add<CallCenterExceptionFilter>());
+
         services.AddSignalR();
 
         services.AddEndpointsApiExplorer();
