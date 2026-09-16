@@ -23,7 +23,7 @@ Point it somewhere else by editing `ConnectionStrings:CallCenter` in
 `src/CallCenter.Api/appsettings.json`.
 
 ```bash
-dotnet test        # 11 tests, ~2 seconds, no database required
+dotnet test        # 17 tests, ~1 second, no database required
 ```
 
 The compiled Angular app is committed into the API's `wwwroot`, so the command above serves the
@@ -66,6 +66,7 @@ src/CallCenter.Api
   Program.cs                      entry point: build host, prepare database, run
   Startup.cs                      service registration and the HTTP pipeline
   Data/CallCenterDbContext.cs     two tables: Agents, Calls
+  Services/ICallCenterService.cs  what the controllers are allowed to ask for
   Services/CallCenterService.cs   the entire domain — queue, routing, state transitions
   Services/SnapshotPublisher.cs   how the new picture reaches the screens
   Controllers/                    the HTTP surface — MVC controllers, including /health
@@ -73,7 +74,7 @@ src/CallCenter.Api
   Filters/                        maps a refused command to a ProblemDetails response
   Hubs/CallCenterHub.cs           the live connection
 src/CallCenter.Web                Angular: sign-in, agent desktop, supervisor console
-tests/CallCenter.Tests            the routing rules
+tests/CallCenter.Tests            the routing rules, and the HTTP layer on its own
 ```
 
 Three decisions shape the whole thing:
@@ -99,6 +100,12 @@ Every endpoint is an MVC controller action — there are no minimal-API endpoint
 `/health`, and not one inline route lambda anywhere. The controllers are written the conventional
 way: constructor injection into `private readonly` fields, one `[Http...]`-attributed method per
 action with a full body, declared response types, and bound request models from `Models/`.
+
+The controllers depend on `ICallCenterService`, not on the implementation, so the HTTP layer
+knows nothing about SQL Server, locking or how a call is routed — and the controller tests run
+against a stand-in service with no database at all. Actions return `IActionResult` with the
+response type declared by attribute, so the generated OpenAPI still names `Snapshot` and
+`ProblemDetails` rather than falling back to an untyped body.
 
 They contain no `try`/`catch`. A refused command throws in the domain and
 `CallCenterExceptionFilter`, registered once in `Startup`, turns it into a standard

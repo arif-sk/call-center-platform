@@ -15,9 +15,9 @@ public class HealthController : ControllerBase
 {
     [HttpGet(Name = nameof(GetHealth))]
     [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
-    public ActionResult<HealthResponse> GetHealth()
+    public IActionResult GetHealth()
     {
-        HealthResponse response = new HealthResponse
+        var response = new HealthResponse
         {
             Status = "ok",
             ServerTime = DateTimeOffset.UtcNow

@@ -18,10 +18,10 @@ namespace CallCenter.Api.Controllers;
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 public class CallsController : ControllerBase
 {
-    private readonly CallCenterService _callCenterService;
+    private readonly ICallCenterService _callCenterService;
     private readonly ILogger<CallsController> _logger;
 
-    public CallsController(CallCenterService callCenterService, ILogger<CallsController> logger)
+    public CallsController(ICallCenterService callCenterService, ILogger<CallsController> logger)
     {
         _callCenterService = callCenterService;
         _logger = logger;
@@ -33,13 +33,13 @@ public class CallsController : ControllerBase
     /// </summary>
     [HttpPost("inbound", Name = nameof(ReceiveInboundCall))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> ReceiveInboundCall(
+    public async Task<IActionResult> ReceiveInboundCall(
         [FromBody] InboundCallRequest request,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Inbound call from {From}.", request.From);
 
-        Snapshot snapshot = await _callCenterService.ReceiveInboundCallAsync(
+        var snapshot = await _callCenterService.ReceiveInboundCallAsync(
             request.From ?? string.Empty,
             request.To ?? string.Empty,
             cancellationToken);
@@ -50,14 +50,14 @@ public class CallsController : ControllerBase
     /// <summary>The agent picked up. Refused unless the call is still ringing on their desk.</summary>
     [HttpPost("{callId:guid}/answer/{agentId:guid}", Name = nameof(Answer))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> Answer(
+    public async Task<IActionResult> Answer(
         Guid callId,
         Guid agentId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} answered call {CallId}.", agentId, callId);
 
-        Snapshot snapshot = await _callCenterService.AnswerAsync(agentId, callId, cancellationToken);
+        var snapshot = await _callCenterService.AnswerAsync(agentId, callId, cancellationToken);
 
         return Ok(snapshot);
     }
@@ -68,14 +68,14 @@ public class CallsController : ControllerBase
     /// </summary>
     [HttpPost("{callId:guid}/decline/{agentId:guid}", Name = nameof(Decline))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> Decline(
+    public async Task<IActionResult> Decline(
         Guid callId,
         Guid agentId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} declined call {CallId}.", agentId, callId);
 
-        Snapshot snapshot = await _callCenterService.DeclineAsync(agentId, callId, cancellationToken);
+        var snapshot = await _callCenterService.DeclineAsync(agentId, callId, cancellationToken);
 
         return Ok(snapshot);
     }
@@ -83,14 +83,14 @@ public class CallsController : ControllerBase
     /// <summary>Ends the conversation and moves the agent into wrap-up.</summary>
     [HttpPost("{callId:guid}/hang-up/{agentId:guid}", Name = nameof(HangUp))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> HangUp(
+    public async Task<IActionResult> HangUp(
         Guid callId,
         Guid agentId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} hung up call {CallId}.", agentId, callId);
 
-        Snapshot snapshot = await _callCenterService.HangUpAsync(agentId, callId, cancellationToken);
+        var snapshot = await _callCenterService.HangUpAsync(agentId, callId, cancellationToken);
 
         return Ok(snapshot);
     }
@@ -101,7 +101,7 @@ public class CallsController : ControllerBase
     /// </summary>
     [HttpPost("{callId:guid}/wrap-up/{agentId:guid}", Name = nameof(CompleteWrapUp))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> CompleteWrapUp(
+    public async Task<IActionResult> CompleteWrapUp(
         Guid callId,
         Guid agentId,
         [FromBody] WrapUpRequest request,
@@ -110,7 +110,7 @@ public class CallsController : ControllerBase
         _logger.LogInformation(
             "Agent {AgentId} filed call {CallId} as {Disposition}.", agentId, callId, request.Disposition);
 
-        Snapshot snapshot = await _callCenterService.CompleteWrapUpAsync(
+        var snapshot = await _callCenterService.CompleteWrapUpAsync(
             agentId, callId, request.Disposition, request.Notes, cancellationToken);
 
         return Ok(snapshot);
@@ -122,11 +122,11 @@ public class CallsController : ControllerBase
     /// </summary>
     [HttpPost("{callId:guid}/abandon", Name = nameof(Abandon))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> Abandon(Guid callId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Abandon(Guid callId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Caller abandoned call {CallId}.", callId);
 
-        Snapshot snapshot = await _callCenterService.AbandonAsync(callId, cancellationToken);
+        var snapshot = await _callCenterService.AbandonAsync(callId, cancellationToken);
 
         return Ok(snapshot);
     }

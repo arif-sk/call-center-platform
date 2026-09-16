@@ -27,7 +27,7 @@ public class Startup(IConfiguration configuration)
         services.AddDbContextFactory<CallCenterDbContext>(options => options.UseSqlServer(connectionString));
 
         services.AddSingleton<ISnapshotPublisher, SignalRSnapshotPublisher>();
-        services.AddSingleton<CallCenterService>();
+        services.AddSingleton<ICallCenterService, CallCenterService>();
 
         // The exception filter is registered once, here, which is why no action in this project
         // has a try/catch in it.

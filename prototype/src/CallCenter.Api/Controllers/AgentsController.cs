@@ -17,10 +17,10 @@ namespace CallCenter.Api.Controllers;
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 public class AgentsController : ControllerBase
 {
-    private readonly CallCenterService _callCenterService;
+    private readonly ICallCenterService _callCenterService;
     private readonly ILogger<AgentsController> _logger;
 
-    public AgentsController(CallCenterService callCenterService, ILogger<AgentsController> logger)
+    public AgentsController(ICallCenterService callCenterService, ILogger<AgentsController> logger)
     {
         _callCenterService = callCenterService;
         _logger = logger;
@@ -33,9 +33,9 @@ public class AgentsController : ControllerBase
     /// </summary>
     [HttpGet(Name = nameof(GetSnapshot))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> GetSnapshot(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetSnapshot(CancellationToken cancellationToken)
     {
-        Snapshot snapshot = await _callCenterService.GetSnapshotAsync(cancellationToken);
+        var snapshot = await _callCenterService.GetSnapshotAsync(cancellationToken);
 
         return Ok(snapshot);
     }
@@ -46,11 +46,11 @@ public class AgentsController : ControllerBase
     /// </summary>
     [HttpPost("{agentId:guid}/sign-in", Name = nameof(SignIn))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> SignIn(Guid agentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> SignIn(Guid agentId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} is signing in.", agentId);
 
-        Snapshot snapshot = await _callCenterService.SignInAsync(agentId, cancellationToken);
+        var snapshot = await _callCenterService.SignInAsync(agentId, cancellationToken);
 
         return Ok(snapshot);
     }
@@ -61,11 +61,11 @@ public class AgentsController : ControllerBase
     /// </summary>
     [HttpPost("{agentId:guid}/sign-out", Name = nameof(SignOut))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> SignOut(Guid agentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> SignOut(Guid agentId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} is signing out.", agentId);
 
-        Snapshot snapshot = await _callCenterService.SignOutAsync(agentId, cancellationToken);
+        var snapshot = await _callCenterService.SignOutAsync(agentId, cancellationToken);
 
         return Ok(snapshot);
     }
@@ -76,14 +76,14 @@ public class AgentsController : ControllerBase
     /// </summary>
     [HttpPost("{agentId:guid}/ready", Name = nameof(SetReady))]
     [ProducesResponseType(typeof(Snapshot), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Snapshot>> SetReady(
+    public async Task<IActionResult> SetReady(
         Guid agentId,
         [FromBody] ReadyRequest request,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Agent {AgentId} is going {State}.", agentId, request.Ready ? "ready" : "not ready");
 
-        Snapshot snapshot = await _callCenterService.SetReadyAsync(agentId, request.Ready, cancellationToken);
+        var snapshot = await _callCenterService.SetReadyAsync(agentId, request.Ready, cancellationToken);
 
         return Ok(snapshot);
     }

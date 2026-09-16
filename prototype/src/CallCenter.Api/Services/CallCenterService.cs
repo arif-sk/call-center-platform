@@ -35,7 +35,7 @@ public sealed class CallCenterException(string message) : Exception(message);
 /// </summary>
 public sealed class CallCenterService(
     IDbContextFactory<CallCenterDbContext> dbFactory,
-    ISnapshotPublisher publisher)
+    ISnapshotPublisher publisher) : ICallCenterService
 {
     /// <summary>
     /// Routing must not interleave, or two agents get the same call. One instance, one lock.

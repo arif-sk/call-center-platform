@@ -724,9 +724,9 @@ the client may only request a transition; the server publishes a **complete snap
 change, so no client-side reducer can drift out of step; and routing runs after every mutation
 **inside a single lock**, so one call can never be offered twice.
 
-It is verified by eleven tests that run in about two seconds against an in-memory database — double
-assignment, longest-waiting ordering, cross-agent command rejection, and the disposition
-requirement.
+It is verified by seventeen tests that run in about a second — double assignment, longest-waiting
+ordering, cross-agent command rejection and the disposition requirement against an in-memory
+database, plus the controllers and the error-mapping filter against a stand-in service.
 
 The telephony port and its second adapter, CRM degradation, skills-based selection, RNA priority
 boost, recording and PCI pause, the DNC gate, the interaction event stream and multi-instance
