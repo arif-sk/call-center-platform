@@ -23,7 +23,7 @@ Point it somewhere else by editing `ConnectionStrings:CallCenter` in
 `src/CallCenter.Api/appsettings.json`.
 
 ```bash
-dotnet test        # 17 tests, ~1 second, no database required
+dotnet test        # 35 tests, ~1 second, no database required
 ```
 
 The compiled Angular app is committed into the API's `wwwroot`, so the command above serves the
@@ -61,23 +61,63 @@ Worth trying as well:
 
 ## How it is built
 
+Four projects, and the dependencies only ever point inwards.
+
 ```
-src/CallCenter.Api
-  Program.cs                      entry point: build host, prepare database, run
-  Startup.cs                      service registration and the HTTP pipeline
-  Data/CallCenterDbContext.cs     two tables: Agents, Calls
-  Services/ICallCenterService.cs  what the controllers are allowed to ask for
-  Services/CallCenterService.cs   the entire domain — queue, routing, state transitions
-  Services/SnapshotPublisher.cs   how the new picture reaches the screens
-  Controllers/                    the HTTP surface — MVC controllers, including /health
-  Models/                         request and response bodies
-  Filters/                        maps a refused command to a ProblemDetails response
-  Hubs/CallCenterHub.cs           the live connection
-src/CallCenter.Web                Angular: sign-in, agent desktop, supervisor console
-tests/CallCenter.Tests            the routing rules, and the HTTP layer on its own
+src/CallCenter.Domain            the rules. References nothing at all
+  Agents/Agent.cs                the agent state machine
+  Calls/Call.cs                  the life of a call, and its timings
+  DomainException.cs             a rule was broken — not a fault
+
+src/CallCenter.Application       the use cases. References only the domain
+  Services/CallCenterService.cs  which call goes to which agent, and in what order
+  Abstractions/                  the interfaces infrastructure has to satisfy
+  Contracts/Snapshot.cs          what the screens are told, as opposed to what we store
+
+src/CallCenter.Infrastructure    the outside world. Implements the abstractions
+  Persistence/                   EF Core, the two repositories, the unit of work
+  Realtime/                      the SignalR hub and publisher
+  DependencyInjection.cs         registered in one call
+
+src/CallCenter.Api               presentation. Talks to the application layer
+  Program.cs, Startup.cs         host and composition root
+  Controllers/  Models/  Filters/
+
+src/CallCenter.Web               Angular: sign-in, agent desktop, supervisor console
+tests/CallCenter.Tests           one project, grouped by the layer each test exercises
 ```
 
-Three decisions shape the whole thing:
+`Startup` is the only file that mentions infrastructure, and it mentions it once. Nothing in
+`Controllers/` knows the database is SQL Server; nothing in `Application/` knows EF Core exists;
+`Domain` has no package references whatsoever. That claim is not left to the reader — four
+[dependency-rule tests](tests/CallCenter.Tests/Architecture/DependencyRuleTests.cs) read the
+assembly references and fail the build if an arrow ever points outwards.
+
+### The rules live on the entities
+
+There is no way to reach an `Agent` and assign `State`, because every setter is private and every
+transition is a method that refuses what does not make sense:
+
+```csharp
+public void SetReady(bool ready, DateTimeOffset now)
+{
+    if (IsHandlingCall)
+    {
+        throw new DomainException($"Cannot change availability while {State}.");
+    }
+
+    ChangeState(ready ? AgentState.Available : AgentState.NotReady, now);
+}
+```
+
+So the state machine cannot be bypassed by a caller written next year, and thirteen tests cover
+those rules with no database, no web server and no test doubles — the domain project references
+nothing, so nothing is needed to test it.
+
+The application service is left with the part that is genuinely its own: *which* call goes to
+*which* agent, and in what order things happen.
+
+### Three decisions behind the behaviour
 
 **The server owns agent state.** The browser may *ask* to go ready; only the server decides what
 state an agent is in. A client that disagrees with the platform about whether somebody is on a
@@ -91,31 +131,24 @@ design document explains why a larger deployment sends targeted events instead.
 agents can never be handed the same call. The design document covers what replaces this when the
 platform runs on more than one server.
 
-The application is laid out the classic MVC way — an explicit `Program` with a `Main`, and a
-`Startup` with `ConfigureServices` and `Configure` — rather than as top-level statements. What the
-application depends on is in one method, the order middleware runs in is in the other, and neither
-is tangled up with startup work.
+### The HTTP layer
 
-Every endpoint is an MVC controller action — there are no minimal-API endpoints, not even
+Laid out the classic MVC way — an explicit `Program` with a `Main`, and a `Startup` with
+`ConfigureServices` and `Configure` — rather than as top-level statements.
+
+Every endpoint is an MVC controller action. There are no minimal-API endpoints, not even
 `/health`, and not one inline route lambda anywhere. The controllers are written the conventional
 way: constructor injection into `private readonly` fields, one `[Http...]`-attributed method per
-action with a full body, declared response types, and bound request models from `Models/`.
+action with a full body, declared response types, and bound request models from `Models/`. They
+return `IActionResult`, with the response type declared by attribute so the generated OpenAPI
+still names `Snapshot` and `ProblemDetails` rather than falling back to an untyped body.
 
-The controllers depend on `ICallCenterService`, not on the implementation, so the HTTP layer
-knows nothing about SQL Server, locking or how a call is routed — and the controller tests run
-against a stand-in service with no database at all. Actions return `IActionResult` with the
-response type declared by attribute, so the generated OpenAPI still names `Snapshot` and
-`ProblemDetails` rather than falling back to an untyped body.
-
-They contain no `try`/`catch`. A refused command throws in the domain and
-`CallCenterExceptionFilter`, registered once in `Startup`, turns it into a standard
-`ProblemDetails` — same shape wherever it is thrown, and a new action cannot forget to handle it.
-The `detail` field is written to be shown to the agent as-is, and the `traceId` ties a complaint
-to a log line.
-
-Note what is *not* in the controllers: the rules. "You cannot finish a call without saying how it
-ended" lives in the service and is covered by a test, not in a validation attribute that only runs
-when the request happens to arrive over HTTP.
+They contain no `try`/`catch`. The domain throws `DomainException` and knows nothing about status
+codes; `DomainExceptionFilter`, registered once in `Startup`, is the single place that decides
+such a refusal is a 400. Same shape wherever it is thrown, and a new action cannot forget the
+contract. The `detail` field is written to be shown to the agent as-is, and the `traceId` ties a
+complaint to a log line. A failure that is *not* a broken rule is deliberately left alone, so it
+still surfaces as a 500 instead of being dressed up as a polite refusal.
 
 ## What is not here, and why
 

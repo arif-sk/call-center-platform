@@ -51,7 +51,7 @@ live, small enough to read in one sitting and defend line by line.
 
 ```bash
 cd prototype
-dotnet test                              # 17 tests, ~1 s, no database required
+dotnet test                              # 35 tests, ~1 s, no database required
 dotnet run --project src/CallCenter.Api  # http://localhost:5080
 ```
 

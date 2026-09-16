@@ -1,0 +1,68 @@
+using CallCenter.Application.Abstractions;
+using CallCenter.Domain.Agents;
+using Microsoft.EntityFrameworkCore;
+
+namespace CallCenter.Infrastructure.Persistence;
+
+/// <summary>
+/// Creates the database on first run and seeds a handful of agents, so a reviewer can clone the
+/// repository and see a working call centre without running a script first.
+///
+/// EnsureCreated is the right tool for a prototype and the wrong one for production, where the
+/// schema changes over time and needs migrations.
+/// </summary>
+public class DatabaseInitialiser
+{
+    private static readonly (string Name, string Extension, bool IsSupervisor)[] SeedAgents =
+    [
+        ("Amina Rahman", "1001", false),
+        ("Daniel Okafor", "1002", false),
+        ("Priya Nair", "1003", false),
+        ("Tomas Novak", "1004", false),
+        ("Sara Haddad", "1100", true)
+    ];
+
+    private readonly IDbContextFactory<CallCenterDbContext> _dbContextFactory;
+    private readonly IClock _clock;
+
+    public DatabaseInitialiser(IDbContextFactory<CallCenterDbContext> dbContextFactory, IClock clock)
+    {
+        _dbContextFactory = dbContextFactory;
+        _clock = clock;
+    }
+
+    public async Task InitialiseAsync(CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+
+        if (!await dbContext.Agents.AnyAsync(cancellationToken))
+        {
+            foreach (var (name, extension, isSupervisor) in SeedAgents)
+            {
+                dbContext.Agents.Add(Agent.Create(name, extension, isSupervisor, _clock.UtcNow));
+            }
+        }
+
+        // A restart leaves nobody signed in, so anything that was on a desktop goes back to the
+        // queue rather than sitting with an agent who is no longer there.
+        foreach (var agent in await dbContext.Agents.ToListAsync(cancellationToken))
+        {
+            agent.ResetForRestart();
+        }
+
+        var stranded = await dbContext.Calls
+            .Where(call => call.Status == Domain.Calls.CallStatus.Ringing
+                        || call.Status == Domain.Calls.CallStatus.Connected
+                        || call.Status == Domain.Calls.CallStatus.WrapUp)
+            .ToListAsync(cancellationToken);
+
+        foreach (var call in stranded)
+        {
+            call.ReturnToQueueAfterRestart();
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+}

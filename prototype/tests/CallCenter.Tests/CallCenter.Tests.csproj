@@ -19,7 +19,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- One test project, but the tests are grouped by the layer they exercise: the domain rules on
+       their own, the use cases over an in-memory database, and the HTTP layer over a stand-in. -->
   <ItemGroup>
+    <ProjectReference Include="..\..\src\CallCenter.Domain\CallCenter.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CallCenter.Application\CallCenter.Application.csproj" />
+    <ProjectReference Include="..\..\src\CallCenter.Infrastructure\CallCenter.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CallCenter.Api\CallCenter.Api.csproj" />
   </ItemGroup>
 

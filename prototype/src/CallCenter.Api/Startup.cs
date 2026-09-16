@@ -1,22 +1,25 @@
-using CallCenter.Api.Data;
 using CallCenter.Api.Filters;
-using CallCenter.Api.Hubs;
-using CallCenter.Api.Services;
-using Microsoft.EntityFrameworkCore;
+using CallCenter.Infrastructure;
+using CallCenter.Infrastructure.Realtime;
 
 namespace CallCenter.Api;
 
 /// <summary>
-/// Service registration and the HTTP pipeline, in the two places you expect to find them.
+/// The composition root: service registration and the HTTP pipeline, in the two places you expect
+/// to find them.
 ///
-/// This is the classic MVC layout rather than top-level statements: what the application depends
-/// on is in one method, the order middleware runs in is in the other, and neither is mixed in with
-/// startup work. Every endpoint is a controller action — there is not a single route handler
-/// defined in this file.
+/// This is the only file in the API that mentions infrastructure at all, and it mentions it once.
+/// The controllers below depend on the application layer's interfaces, so nothing in this project
+/// knows that the database is SQL Server.
 /// </summary>
-public class Startup(IConfiguration configuration)
+public class Startup
 {
-    public IConfiguration Configuration { get; } = configuration;
+    public Startup(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public IConfiguration Configuration { get; }
 
     public void ConfigureServices(IServiceCollection services)
     {
@@ -24,14 +27,11 @@ public class Startup(IConfiguration configuration)
         var connectionString = Configuration.GetConnectionString("CallCenter")
             ?? "Server=localhost;Database=CallCenterPrototype;Trusted_Connection=True;TrustServerCertificate=True";
 
-        services.AddDbContextFactory<CallCenterDbContext>(options => options.UseSqlServer(connectionString));
-
-        services.AddSingleton<ISnapshotPublisher, SignalRSnapshotPublisher>();
-        services.AddSingleton<ICallCenterService, CallCenterService>();
+        services.AddCallCenter(connectionString);
 
         // The exception filter is registered once, here, which is why no action in this project
         // has a try/catch in it.
-        services.AddControllers(options => options.Filters.Add<CallCenterExceptionFilter>());
+        services.AddControllers(options => options.Filters.Add<DomainExceptionFilter>());
 
         services.AddSignalR();
 

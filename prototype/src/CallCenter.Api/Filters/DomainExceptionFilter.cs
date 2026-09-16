@@ -1,4 +1,4 @@
-using CallCenter.Api.Services;
+using CallCenter.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -6,20 +6,22 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 namespace CallCenter.Api.Filters;
 
 /// <summary>
-/// Turns a refused command into a standard <c>ProblemDetails</c> response.
+/// Turns a broken business rule into a standard <c>ProblemDetails</c> response.
 ///
-/// This is registered globally in <see cref="Startup"/>, which is why no action in this project
-/// has a try/catch in it. A rule broken deep in the domain surfaces as the same HTTP response
-/// wherever it is thrown, and adding a new action cannot accidentally forget to handle it.
+/// This is the seam between the domain's language and HTTP's. The domain throws
+/// <see cref="DomainException"/> and knows nothing about status codes; this filter, registered
+/// globally in <see cref="Startup"/>, is the single place that decides such a refusal is a 400.
+/// That is why no action in this project has a try/catch, and why a new action cannot forget the
+/// error contract.
 /// </summary>
-public class CallCenterExceptionFilter : IExceptionFilter
+public class DomainExceptionFilter : IExceptionFilter
 {
     private readonly ProblemDetailsFactory _problemDetailsFactory;
-    private readonly ILogger<CallCenterExceptionFilter> _logger;
+    private readonly ILogger<DomainExceptionFilter> _logger;
 
-    public CallCenterExceptionFilter(
+    public DomainExceptionFilter(
         ProblemDetailsFactory problemDetailsFactory,
-        ILogger<CallCenterExceptionFilter> logger)
+        ILogger<DomainExceptionFilter> logger)
     {
         _problemDetailsFactory = problemDetailsFactory;
         _logger = logger;
@@ -27,9 +29,9 @@ public class CallCenterExceptionFilter : IExceptionFilter
 
     public void OnException(ExceptionContext context)
     {
-        // Anything that is not a domain refusal is a genuine fault, and is left to the framework
-        // so it is logged as an error and returns a 500 rather than being quietly swallowed.
-        if (context.Exception is not CallCenterException exception)
+        // Anything that is not a broken rule is a genuine fault, and is left to the framework so
+        // it is logged as an error and returns a 500 rather than being quietly swallowed.
+        if (context.Exception is not DomainException exception)
         {
             return;
         }

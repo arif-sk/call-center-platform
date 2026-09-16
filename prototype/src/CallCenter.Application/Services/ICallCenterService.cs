@@ -1,16 +1,16 @@
-namespace CallCenter.Api.Services;
+using CallCenter.Application.Contracts;
+
+namespace CallCenter.Application.Services;
 
 /// <summary>
-/// The call centre, as the controllers see it: every command they can issue and the picture they
-/// can read. The controllers depend on this rather than on the implementation, so the HTTP layer
-/// knows nothing about SQL Server, locking, or how a call is routed.
+/// The call centre, as the outside world sees it: every command that can be issued and the
+/// picture that can be read. The API depends on this; it has no idea what implements it.
 ///
 /// Every command returns the new <see cref="Snapshot"/>, so a caller always gets the resulting
 /// state back rather than having to ask for it again.
 /// </summary>
 public interface ICallCenterService
 {
-    /// <summary>The current picture: every agent, every live call, and the headline numbers.</summary>
     Task<Snapshot> GetSnapshotAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Takes a seat. The agent starts not-ready.</summary>
@@ -25,16 +25,14 @@ public interface ICallCenterService
     /// <summary>A customer calls in. Stands in for the carrier's webhook.</summary>
     Task<Snapshot> ReceiveInboundCallAsync(string from, string to, CancellationToken cancellationToken = default);
 
-    /// <summary>The agent picked up. Refused unless the call is still ringing on their desk.</summary>
     Task<Snapshot> AnswerAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default);
 
     /// <summary>The agent did not pick up: the call is re-queued and they are made not-ready.</summary>
     Task<Snapshot> DeclineAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default);
 
-    /// <summary>Ends the conversation and moves the agent into wrap-up.</summary>
     Task<Snapshot> HangUpAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default);
 
-    /// <summary>Files the call and returns the agent to the queue. Refused without a disposition.</summary>
+    /// <summary>Files the call and returns the agent to the queue.</summary>
     Task<Snapshot> CompleteWrapUpAsync(
         Guid agentId, Guid callId, string disposition, string? notes, CancellationToken cancellationToken = default);
 

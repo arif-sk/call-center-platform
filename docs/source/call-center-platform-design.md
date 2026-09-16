@@ -750,8 +750,8 @@ busy. If nobody is free the caller waits, and the moment somebody presses "ready
 connects. A caller who gives up is recorded as abandoned, because that is the number managers
 actually watch.
 
-Seventeen automated tests, running in about a second, cover the rules that would embarrass us in
-front of a customer: two staff members are never handed the same call, the longest-waiting caller is
+Thirty-five automated tests, running in about a second, cover the rules that would embarrass us
+in front of a customer: two staff members are never handed the same call, the longest-waiting caller is
 served first, nobody can answer or end a call that was given to somebody else, and no call can be
 filed without saying how it ended.
 

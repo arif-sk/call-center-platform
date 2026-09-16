@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Use cases. Depends on the domain and on nothing else — the interfaces it declares in
+       Abstractions/ are implemented out in Infrastructure, which is what keeps EF Core and
+       SignalR out of this layer. -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CallCenter.Domain\CallCenter.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

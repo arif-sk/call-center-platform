@@ -724,9 +724,11 @@ the client may only request a transition; the server publishes a **complete snap
 change, so no client-side reducer can drift out of step; and routing runs after every mutation
 **inside a single lock**, so one call can never be offered twice.
 
-It is verified by seventeen tests that run in about a second — double assignment, longest-waiting
-ordering, cross-agent command rejection and the disposition requirement against an in-memory
-database, plus the controllers and the error-mapping filter against a stand-in service.
+It is laid out as four projects — domain, application, infrastructure, API — with the dependencies
+pointing inwards, and is verified by thirty-five tests that run in about a second: the state
+machine and call timings against the domain alone, routing over an in-memory database, the
+controllers and error-mapping filter against a stand-in service, and four dependency-rule tests
+that fail the build if a layer ever reaches outwards.
 
 The telephony port and its second adapter, CRM degradation, skills-based selection, RNA priority
 boost, recording and PCI pause, the DNC gate, the interaction event stream and multi-instance

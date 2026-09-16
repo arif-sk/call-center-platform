@@ -1,7 +1,9 @@
 using CallCenter.Api.Controllers;
 using CallCenter.Api.Filters;
 using CallCenter.Api.Models;
-using CallCenter.Api.Services;
+using CallCenter.Application.Contracts;
+using CallCenter.Application.Services;
+using CallCenter.Domain;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -11,14 +13,14 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace CallCenter.Tests;
+namespace CallCenter.Tests.Api;
 
 /// <summary>
-/// The HTTP layer on its own, with a stand-in service. This is what <c>ICallCenterService</c> is
-/// for: these run without a database because the controllers depend on the interface, not on the
-/// implementation.
+/// The HTTP layer on its own, over a stand-in application service. These run with no database and
+/// no web server because the controllers depend on <see cref="ICallCenterService"/> rather than on
+/// the class that implements it — which is the whole argument for the dependency pointing that way.
 /// </summary>
-public sealed class ControllerTests
+public class ControllerTests
 {
     [Fact]
     public async Task Getting_the_snapshot_returns_200_with_the_snapshot()
@@ -65,20 +67,23 @@ public sealed class ControllerTests
         var callId = Guid.NewGuid();
 
         await controller.CompleteWrapUp(
-            callId, agentId, new WrapUpRequest { Disposition = "Resolved", Notes = "Reset it." }, CancellationToken.None);
+            callId,
+            agentId,
+            new WrapUpRequest { Disposition = "Resolved", Notes = "Reset it." },
+            CancellationToken.None);
 
         Assert.Equal($"WrapUp:{agentId}:{callId}:Resolved:Reset it.", Assert.Single(service.Received));
     }
 
     /// <summary>
-    /// The error contract, tested where it lives. Because this is a filter rather than a try/catch
-    /// in each action, one test covers every endpoint.
+    /// The seam between the domain's language and HTTP's, tested where it lives. Because this is a
+    /// filter rather than a try/catch in each action, one test covers every endpoint.
     /// </summary>
     [Fact]
-    public void A_refused_command_becomes_a_400_problem_details()
+    public void A_broken_rule_becomes_a_400_problem_details()
     {
         var filter = NewFilter();
-        var context = NewExceptionContext(new CallCenterException("That call belongs to another agent."));
+        var context = NewExceptionContext(new DomainException("That call belongs to another agent."));
 
         filter.OnException(context);
 
@@ -111,12 +116,13 @@ public sealed class ControllerTests
     private static AgentsController NewAgentsController(ICallCenterService service) =>
         new(service, NullLogger<AgentsController>.Instance);
 
-    private static CallCenterExceptionFilter NewFilter() =>
-        new(new StubProblemDetailsFactory(), NullLogger<CallCenterExceptionFilter>.Instance);
+    private static DomainExceptionFilter NewFilter() =>
+        new(new StubProblemDetailsFactory(), NullLogger<DomainExceptionFilter>.Instance);
 
     private static ExceptionContext NewExceptionContext(Exception exception)
     {
         var actionContext = new ActionContext(new DefaultHttpContext(), new RouteData(), new ActionDescriptor());
+
         return new ExceptionContext(actionContext, []) { Exception = exception };
     }
 
@@ -133,35 +139,37 @@ public sealed class ControllerTests
             return Task.FromResult(Returns);
         }
 
-        public Task<Snapshot> GetSnapshotAsync(CancellationToken ct = default) =>
+        public Task<Snapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Returns);
 
-        public Task<Snapshot> SignInAsync(Guid agentId, CancellationToken ct = default) =>
+        public Task<Snapshot> SignInAsync(Guid agentId, CancellationToken cancellationToken = default) =>
             Record($"SignIn:{agentId}");
 
-        public Task<Snapshot> SignOutAsync(Guid agentId, CancellationToken ct = default) =>
+        public Task<Snapshot> SignOutAsync(Guid agentId, CancellationToken cancellationToken = default) =>
             Record($"SignOut:{agentId}");
 
-        public Task<Snapshot> SetReadyAsync(Guid agentId, bool ready, CancellationToken ct = default) =>
+        public Task<Snapshot> SetReadyAsync(Guid agentId, bool ready, CancellationToken cancellationToken = default) =>
             Record($"SetReady:{agentId}:{ready}");
 
-        public Task<Snapshot> ReceiveInboundCallAsync(string from, string to, CancellationToken ct = default) =>
+        public Task<Snapshot> ReceiveInboundCallAsync(
+            string from, string to, CancellationToken cancellationToken = default) =>
             Record($"Inbound:{from}:{to}");
 
-        public Task<Snapshot> AnswerAsync(Guid agentId, Guid callId, CancellationToken ct = default) =>
+        public Task<Snapshot> AnswerAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default) =>
             Record($"Answer:{agentId}:{callId}");
 
-        public Task<Snapshot> DeclineAsync(Guid agentId, Guid callId, CancellationToken ct = default) =>
+        public Task<Snapshot> DeclineAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default) =>
             Record($"Decline:{agentId}:{callId}");
 
-        public Task<Snapshot> HangUpAsync(Guid agentId, Guid callId, CancellationToken ct = default) =>
+        public Task<Snapshot> HangUpAsync(Guid agentId, Guid callId, CancellationToken cancellationToken = default) =>
             Record($"HangUp:{agentId}:{callId}");
 
         public Task<Snapshot> CompleteWrapUpAsync(
-            Guid agentId, Guid callId, string disposition, string? notes, CancellationToken ct = default) =>
+            Guid agentId, Guid callId, string disposition, string? notes,
+            CancellationToken cancellationToken = default) =>
             Record($"WrapUp:{agentId}:{callId}:{disposition}:{notes}");
 
-        public Task<Snapshot> AbandonAsync(Guid callId, CancellationToken ct = default) =>
+        public Task<Snapshot> AbandonAsync(Guid callId, CancellationToken cancellationToken = default) =>
             Record($"Abandon:{callId}");
     }
 

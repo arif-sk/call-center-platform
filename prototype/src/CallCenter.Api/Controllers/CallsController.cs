@@ -1,5 +1,6 @@
 using CallCenter.Api.Models;
-using CallCenter.Api.Services;
+using CallCenter.Application.Contracts;
+using CallCenter.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CallCenter.Api.Controllers;
