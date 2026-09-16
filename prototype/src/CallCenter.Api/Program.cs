@@ -30,9 +30,9 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Every HTTP endpoint on this API is a controller action, including /health.
 app.MapControllers();
 app.MapHub<CallCenterHub>("/hub");
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 // The Angular app owns its own routes, so anything unrecognised returns the shell.
 app.MapFallbackToFile("index.html");

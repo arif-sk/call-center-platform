@@ -67,7 +67,7 @@ src/CallCenter.Api
   Data/CallCenterDbContext.cs     two tables: Agents, Calls
   Services/CallCenterService.cs   the entire domain — queue, routing, state transitions
   Services/SnapshotPublisher.cs   how the new picture reaches the screens
-  Controllers/                    the HTTP surface
+  Controllers/                    the HTTP surface — MVC controllers, including /health
   Hubs/CallCenterHub.cs           the live connection
 src/CallCenter.Web                Angular: sign-in, agent desktop, supervisor console
 tests/CallCenter.Tests            the routing rules
@@ -86,6 +86,14 @@ design document explains why a larger deployment sends targeted events instead.
 **Routing runs after every change, inside one lock.** One instance, one `SemaphoreSlim`, so two
 agents can never be handed the same call. The design document covers what replaces this when the
 platform runs on more than one server.
+
+Every endpoint is an MVC controller action — there are no minimal-API endpoints, not even
+`/health` — so there is one HTTP surface to reason about, one place where filters and
+authorisation attributes will go when they are needed, and one error shape: a refused command
+comes back as standard `ProblemDetails`, whose `detail` is written to be shown to the agent as-is.
+Note what is *not* in the controllers: the rules. "You cannot finish a call without saying how it
+ended" lives in the service and is covered by a test, not in a validation attribute that only runs
+when the request happens to arrive over HTTP.
 
 ## What is not here, and why
 

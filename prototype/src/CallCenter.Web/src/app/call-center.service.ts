@@ -135,7 +135,8 @@ export class CallCenterService {
       this.snapshotSignal.set(await firstValueFrom(this.http.post<Snapshot>(url, body)));
       return true;
     } catch (response: any) {
-      this.errorSignal.set(response?.error?.error ?? 'Something went wrong. Please try again.');
+      // The API returns ProblemDetails; `detail` is the message meant for the agent.
+      this.errorSignal.set(response?.error?.detail ?? 'Something went wrong. Please try again.');
       return false;
     }
   }

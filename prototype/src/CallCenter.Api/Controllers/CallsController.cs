@@ -8,40 +8,44 @@ public sealed record InboundCallRequest(string? From, string? To);
 public sealed record WrapUpRequest(string Disposition, string? Notes);
 
 /// <summary>
-/// Call handling. The agent id travels in the route rather than in a token because there is no
-/// sign-in token in this prototype; the server still refuses any command for a call that was not
-/// offered to that agent.
+/// Call handling.
+///
+/// The agent id travels in the route because there is no sign-in token in this prototype. The
+/// server still refuses any command for a call that was not offered to that agent, so the rule
+/// holds even though the identity does not — that check belongs in the domain either way.
 /// </summary>
 [Route("api/calls")]
-public sealed class CallsController(CallCenterService service) : CallCenterControllerBase
+public sealed class CallsController(CallCenterService service) : CallCenterControllerBase(service)
 {
     /// <summary>
     /// Stands in for the telephone network. In production this is the carrier's webhook, and it is
-    /// the only part of this controller that would change.
+    /// the only action here that would change.
     /// </summary>
-    [HttpPost("inbound")]
-    public Task<ActionResult<Snapshot>> Inbound(InboundCallRequest request, CancellationToken ct) =>
-        RunAsync(() => service.ReceiveInboundCallAsync(request.From ?? "", request.To ?? "", ct));
+    [HttpPost("inbound", Name = nameof(ReceiveInboundCall))]
+    public Task<ActionResult<Snapshot>> ReceiveInboundCall(InboundCallRequest request, CancellationToken ct) =>
+        RunAsync(() => Service.ReceiveInboundCallAsync(request.From ?? "", request.To ?? "", ct));
 
-    [HttpPost("{callId:guid}/answer/{agentId:guid}")]
+    [HttpPost("{callId:guid}/answer/{agentId:guid}", Name = nameof(Answer))]
     public Task<ActionResult<Snapshot>> Answer(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => service.AnswerAsync(agentId, callId, ct));
+        RunAsync(() => Service.AnswerAsync(agentId, callId, ct));
 
-    [HttpPost("{callId:guid}/decline/{agentId:guid}")]
+    /// <summary>The agent did not pick up: the call is re-queued and they are made not-ready.</summary>
+    [HttpPost("{callId:guid}/decline/{agentId:guid}", Name = nameof(Decline))]
     public Task<ActionResult<Snapshot>> Decline(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => service.DeclineAsync(agentId, callId, ct));
+        RunAsync(() => Service.DeclineAsync(agentId, callId, ct));
 
-    [HttpPost("{callId:guid}/hang-up/{agentId:guid}")]
+    [HttpPost("{callId:guid}/hang-up/{agentId:guid}", Name = nameof(HangUp))]
     public Task<ActionResult<Snapshot>> HangUp(Guid callId, Guid agentId, CancellationToken ct) =>
-        RunAsync(() => service.HangUpAsync(agentId, callId, ct));
+        RunAsync(() => Service.HangUpAsync(agentId, callId, ct));
 
-    [HttpPost("{callId:guid}/wrap-up/{agentId:guid}")]
-    public Task<ActionResult<Snapshot>> WrapUp(
+    /// <summary>Files the call. Refused without a disposition — wrap-up is part of the call.</summary>
+    [HttpPost("{callId:guid}/wrap-up/{agentId:guid}", Name = nameof(CompleteWrapUp))]
+    public Task<ActionResult<Snapshot>> CompleteWrapUp(
         Guid callId, Guid agentId, WrapUpRequest request, CancellationToken ct) =>
-        RunAsync(() => service.CompleteWrapUpAsync(agentId, callId, request.Disposition, request.Notes, ct));
+        RunAsync(() => Service.CompleteWrapUpAsync(agentId, callId, request.Disposition, request.Notes, ct));
 
-    /// <summary>The waiting caller hung up. Also driven by a button, for the same reason as inbound.</summary>
-    [HttpPost("{callId:guid}/abandon")]
+    /// <summary>The waiting caller hung up. Driven by a button, for the same reason as inbound.</summary>
+    [HttpPost("{callId:guid}/abandon", Name = nameof(Abandon))]
     public Task<ActionResult<Snapshot>> Abandon(Guid callId, CancellationToken ct) =>
-        RunAsync(() => service.AbandonAsync(callId, ct));
+        RunAsync(() => Service.AbandonAsync(callId, ct));
 }
