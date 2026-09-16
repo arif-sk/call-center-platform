@@ -63,7 +63,8 @@ Worth trying as well:
 
 ```
 src/CallCenter.Api
-  Program.cs                      startup, seeding, SPA hosting
+  Program.cs                      entry point: build host, prepare database, run
+  Startup.cs                      service registration and the HTTP pipeline
   Data/CallCenterDbContext.cs     two tables: Agents, Calls
   Services/CallCenterService.cs   the entire domain — queue, routing, state transitions
   Services/SnapshotPublisher.cs   how the new picture reaches the screens
@@ -87,8 +88,14 @@ design document explains why a larger deployment sends targeted events instead.
 agents can never be handed the same call. The design document covers what replaces this when the
 platform runs on more than one server.
 
+The application is laid out the classic MVC way — an explicit `Program` with a `Main`, and a
+`Startup` with `ConfigureServices` and `Configure` — rather than as top-level statements. What the
+application depends on is in one method, the order middleware runs in is in the other, and neither
+is tangled up with startup work.
+
 Every endpoint is an MVC controller action — there are no minimal-API endpoints, not even
-`/health` — so there is one HTTP surface to reason about, one place where filters and
+`/health`, and not one inline route lambda anywhere — so there is one HTTP surface to reason
+about, one place where filters and
 authorisation attributes will go when they are needed, and one error shape: a refused command
 comes back as standard `ProblemDetails`, whose `detail` is written to be shown to the agent as-is.
 Note what is *not* in the controllers: the rules. "You cannot finish a call without saying how it
