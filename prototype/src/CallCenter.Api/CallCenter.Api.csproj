@@ -1,22 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\CallCenter.Domain\CallCenter.Domain.csproj" />
-    <ProjectReference Include="..\CallCenter.Telephony\CallCenter.Telephony.csproj" />
-  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- XML docs feed Swagger; we do not need a warning for every undocumented member. -->
-    <NoWarn>$(NoWarn);1591</NoWarn>
-  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CallCenter.Tests" />
+  </ItemGroup>
 
 </Project>

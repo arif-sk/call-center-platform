@@ -739,19 +739,27 @@ careful.
 
 ## 8. The working demonstration
 
-Alongside this document there is a **working version of the core of this system**, built to prove
-the parts that are easy to describe and hard to do. It runs on a laptop with one command.
+Alongside this document there is a **working version of the heart of this system**. It is small on
+purpose: it runs on a laptop with one command, and it can be read end to end in one sitting.
 
-It really does share calls by skill, claim exactly one person per call, put callers back in the
-queue with raised priority when nobody answers, fetch customer details while the phone rings, block
-do-not-call numbers, pause recording for card details, and keep the full call diary.
+It does one loop, properly. A call comes in, the system decides who should take it and rings them,
+and that person's screen changes **by itself** — no refreshing, no waiting. They answer, talk, hang
+up, file what the call was about, and go straight back into the queue for the next one. A manager's
+screen shows all of it live: who is waiting, how long the worst wait is, who is free and who is
+busy. If nobody is free the caller waits, and the moment somebody presses "ready" the waiting call
+connects. A caller who gives up is recorded as abandoned, because that is the number managers
+actually watch.
 
-It is checked by 84 automated tests on the server, 16 on the screens, and one that drives two real
-web browsers at once to prove what matters most: **a call created in the manager's window appears,
-ringing, in the staff member's window** — with the customer's details and a ticket the system
-accepts. It is then answered, paused for a card payment, filed, and replayed from its diary. The
-whole set runs in seconds with no phone company, no internet and no database server — the return on
-building that fake phone provider.
+Eleven automated tests, running in about two seconds, cover the rules that would embarrass us in
+front of a customer: two staff members are never handed the same call, the longest-waiting caller is
+served first, nobody can answer or end a call that was given to somebody else, and no call can be
+filed without saying how it ended.
+
+Everything else in this document is **deliberately missing** from it — the phone company connection,
+the customer-record lookup, routing by skill, recording, the compliance rules, running across
+several servers. A demonstration exists to prove the risky part works, not to build the product
+twice. What was left out, and where each one is answered here, is written down beside the code:
+knowing what to leave out is exactly the judgement the first release will need.
 
 ---
 

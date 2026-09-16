@@ -158,7 +158,7 @@ public interface ITelephonyProvider
 **Implementations in v1:** `TwilioTelephonyProvider` (or equivalent) and
 `SimulatedTelephonyProvider`. The simulated one is not a stub — it models ring time, answer
 probability, RNA, caller abandon and hangup, so routing logic can be tested deterministically
-and load-tested for free. **This is implemented and demonstrable in the prototype.**
+and load-tested for free. It is v1 work, not part of the prototype.
 
 **Failure behaviour:** if the provider's API is unreachable, commands are retried with
 jittered backoff for a bounded window, then the call is marked `Failed` with a specific

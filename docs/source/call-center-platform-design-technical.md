@@ -713,18 +713,25 @@ the strongest incentive for careful change.
 
 ## 8. Prototype
 
-A working .NET 8 + Angular slice accompanies this document, built to prove the parts that are easy
-to claim and hard to do: the reservation protocol with atomic compare-and-set and server-validated
-tokens, the agent state machine, skills routing with pluggable policies, RNA re-queue with
-priority boost, the telephony port with **two real adapters**, CRM degradation under a forced
-outage, the DNC gate, PCI pause, and the interaction event stream.
+A small working .NET 8 + Angular slice accompanies this document, scoped to a few hours and to one
+loop: inbound call arrives, the platform selects an agent and offers the call, the agent desktop
+updates itself over SignalR, the agent answers, hangs up, dispositions, and returns to the pool —
+with a supervisor console watching the same state live. Queueing, longest-waiting-first ordering,
+decline-and-requeue, and abandonment are all real; state lives in SQL Server behind EF Core.
 
-It is verified by 84 backend tests, 16 frontend tests, and a browser smoke test that drives two
-real Chrome tabs and asserts the thing no unit test can: **a call placed in the supervisor's tab
-is offered in the agent's tab**, with a screen-pop and a token the server accepts — then answered,
-PCI-paused, dispositioned and replayed from its event trace. The whole suite runs in seconds with
-no carrier, no network and no database server, which is the return on building the second
-telephony adapter in v1.
+Three properties are load-bearing and visible in the code: **agent state is server-authoritative**,
+the client may only request a transition; the server publishes a **complete snapshot** after every
+change, so no client-side reducer can drift out of step; and routing runs after every mutation
+**inside a single lock**, so one call can never be offered twice.
+
+It is verified by eleven tests that run in about two seconds against an in-memory database — double
+assignment, longest-waiting ordering, cross-agent command rejection, and the disposition
+requirement.
+
+The telephony port and its second adapter, CRM degradation, skills-based selection, RNA priority
+boost, recording and PCI pause, the DNC gate, the interaction event stream and multi-instance
+routing are **all absent by design**, each mapped in the prototype's README to the section here
+that answers it. Scoping the demonstration is the same exercise as scoping the MVP.
 
 ---
 

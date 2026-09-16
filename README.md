@@ -45,26 +45,29 @@ space where a diagram should be.
 
 ## The prototype
 
-A working .NET 8 slice in [`prototype/`](prototype/README.md) — not part of the written
-submission, built to demonstrate the design live.
+A small working slice in [`prototype/`](prototype/README.md) — not part of the written
+submission. It is scoped to a few hours of work on purpose: enough to demonstrate the design
+live, small enough to read in one sitting and defend line by line.
 
 ```bash
 cd prototype
-dotnet test                              # 84 backend tests, ~8 s, no external dependencies
+dotnet test                              # 11 tests, ~2 s, no database required
 dotnet run --project src/CallCenter.Api  # http://localhost:5080
 ```
 
-The frontend is an **Angular 20 single-page app** (`src/CallCenter.Web`) — agent desktop and
-supervisor console — built into the API's `wwwroot`, so the command above serves it with no
-`npm install` required.
+Needs .NET 8 and SQL Server on `localhost`; the database and five seeded agents are created on
+first run. The compiled **Angular 20** app is committed into the API's `wwwroot`, so that second
+command serves the UI with no `npm install`.
 
-It implements the reservation protocol, the agent state machine, skills-based routing with
-pluggable selection policies, RNA handling, the telephony port with two real adapters, CRM
-degradation, the DNC gate, PCI recording pause, and the interaction event stream — behind a
-controller-based ASP.NET Core API with role-gated authorisation, and an Angular 20 client
-using signals for state and RxJS for the call event stream. A
-[6-minute walkthrough](prototype/README.md#the-6-minute-walkthrough) is in its README, along
-with an explicit table of what is real and what is simulated.
+It demonstrates one loop end to end: a call arrives, the platform picks an agent, the agent's
+screen changes on its own, and the outcome is recorded. Sign in as a supervisor in one window
+and an agent in another to watch both sides at once — the
+[walkthrough](prototype/README.md#the-five-minute-walkthrough) takes five minutes.
+
+Everything else in the design document — the telephony port, CRM degradation, skills-based
+routing, compliance, distributed routing — is **deliberately absent**, and the prototype README
+has a table mapping each omission to the part of the design that covers it. Scoping a prototype
+is the same skill as scoping an MVP; building all of it would have demonstrated less.
 
 ---
 

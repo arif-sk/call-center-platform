@@ -231,7 +231,7 @@ was bought for, and it is why I insisted on two adapters in v1 (§3.5).
 ## 5.8 Capacity testing strategy
 
 We cannot load-test by placing 500 real calls — it would cost thousands and annoy a carrier.
-The **simulated provider** (§4.3.1, and built in the prototype) is what makes capacity
+The **simulated provider** (§4.3.1) is what makes capacity
 testing routine rather than heroic.
 
 | Test | What it proves | Cadence |

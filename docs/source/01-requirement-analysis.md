@@ -317,7 +317,7 @@ These are what actually constrain the architecture. Each has a number, because "
 | NFR-M2 | Ops-configurable behaviour (queues, skills, hours, dispositions) changes without a release |
 | NFR-M3 | ≥ 70% unit coverage on the routing engine and state machines — that is where correctness bugs cost money |
 | NFR-M4 | Any call fully reconstructible from its event stream ("what happened to call X?") |
-| NFR-M5 | One-command local environment with a simulated telephony provider, so engineers develop without burning carrier minutes — **implemented in the prototype** |
+| NFR-M5 | One-command local environment with a simulated telephony provider, so engineers develop without burning carrier minutes. The prototype runs on one command; the simulated provider behind it is v1 work |
 
 ---
 
@@ -369,10 +369,10 @@ Scored **Likelihood × Impact** (1–5), ordered by exposure.
 | **R-05** | **CRM integration harder than advertised** (rate limits, no bulk lookup, poor phone indexing) | 4 | 3 | 12 | Spike the CRM API in week 1. Anti-corruption layer + read-through cache of number → contact so CRM latency never blocks a call |
 | **R-11** | **Key-person dependency** on the one engineer who understands telephony | 4 | 3 | 12 | Pair on the telephony gateway; write the runbook while building, not after |
 | **R-13** | **Reporting disagrees with the old tool**, destroying trust in the new platform | 4 | 3 | 12 | Agree KPI formulas in writing up front (FR-H4); parallel-run two weeks and reconcile before decommissioning. Consistently underestimated |
-| **R-06** | **Routing engine state loss** double-assigns or strands calls | 2 | 5 | 10 | Single-writer per queue partition; reservation tokens validated server-side; idempotent event handling; chaos-test failover. **Demonstrated in the prototype** |
+| **R-06** | **Routing engine state loss** double-assigns or strands calls | 2 | 5 | 10 | Single-writer per queue partition; reservation tokens validated server-side; idempotent event handling; chaos-test failover. The prototype demonstrates the single-writer guarantee only |
 | **R-12** | **Toll fraud** on outbound | 2 | 5 | 10 | Spend caps, destination allow-lists, anomaly alerts, MFA on admin |
 | **R-14** | **Emergency-calling obligations** overlooked for softphone users | 2 | 5 | 10 | Legal review in discovery; explicit policy that softphones are not for emergency calls; carrier-side address registration where required |
-| **R-10** | **CPaaS lock-in** re-creates the original vendor problem | 3 | 3 | 9 | `ITelephonyProvider` port with ≥ 2 adapters before go-live (one real, one simulated) — **proven in the prototype**. Carrier-neutral SIP option stays open |
+| **R-10** | **CPaaS lock-in** re-creates the original vendor problem | 3 | 3 | 9 | `ITelephonyProvider` port with ≥ 2 adapters before go-live (one real, one simulated). Carrier-neutral SIP option stays open |
 
 ---
 
