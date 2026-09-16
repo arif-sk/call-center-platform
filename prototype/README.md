@@ -16,8 +16,8 @@ cd prototype
 dotnet run --project src/CallCenter.Api
 ```
 
-Open <http://localhost:5080>. The database, its tables and five seeded agents are created on
-first run — there is no setup script.
+Open <http://localhost:5080>. The database is created and migrated on startup, and five agents
+are seeded — there is no setup script to run first.
 
 Point it somewhere else by editing `ConnectionStrings:CallCenter` in
 `src/CallCenter.Api/appsettings.json`.
@@ -34,6 +34,24 @@ cd src/CallCenter.Web
 npm install
 npm start          # dev server on :4200, proxied to the API
 npm run build      # rebuilds into ../CallCenter.Api/wwwroot
+```
+
+### Changing the schema
+
+The schema is owned by EF Core migrations in
+`src/CallCenter.Infrastructure/Persistence/Migrations`. After editing an entity or its
+configuration:
+
+```bash
+dotnet ef migrations add <Name>   --project src/CallCenter.Infrastructure   --startup-project src/CallCenter.Api   --output-dir Persistence/Migrations
+```
+
+The migration lives with the `DbContext` in the infrastructure layer; the API is only named
+because it is the project the tooling builds to find the connection string. To produce the SQL for
+a DBA to run against a real environment rather than letting the application apply it:
+
+```bash
+dotnet ef migrations script --idempotent   --project src/CallCenter.Infrastructure   --startup-project src/CallCenter.Api
 ```
 
 ## The five-minute walkthrough
@@ -76,6 +94,7 @@ src/CallCenter.Application       the use cases. References only the domain
 
 src/CallCenter.Infrastructure    the outside world. Implements the abstractions
   Persistence/                   EF Core, the two repositories, the unit of work
+  Persistence/Migrations/        the schema, versioned
   Realtime/                      the SignalR hub and publisher
   DependencyInjection.cs         registered in one call
 
@@ -166,7 +185,9 @@ deliberate rather than accidental:
 | Several instances, distributed routing, Redis backplane | The 50 → 500 agent path |
 | The append-only event stream feeding AI | The prototype keeps one row per call instead |
 
-Two things to be honest about in the code as it stands: `EnsureCreated` is the right tool for a
-prototype and the wrong one for production, where the schema changes and needs migrations; and
-the tests use an in-memory database, which is fast and proves the routing rules, but proves
-nothing about SQL Server behaviour under concurrency.
+Two things to be honest about in the code as it stands. The application migrates the database on
+startup, which suits one instance: several starting at once would race, so a real deployment runs
+migrations as their own step before the new version starts — having them as migrations rather than
+`EnsureCreated` is what makes that possible. And the tests use an in-memory database, which is
+fast and proves the routing rules, but proves nothing about SQL Server behaviour under
+concurrency.

@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 namespace CallCenter.Infrastructure.Persistence;
 
 /// <summary>
-/// Creates the database on first run and seeds a handful of agents, so a reviewer can clone the
-/// repository and see a working call centre without running a script first.
+/// Brings the database up to date on startup and seeds a handful of agents, so a reviewer can
+/// clone the repository and see a working call centre without running a script first.
 ///
-/// EnsureCreated is the right tool for a prototype and the wrong one for production, where the
-/// schema changes over time and needs migrations.
+/// Migrating on startup suits one instance and a prototype. Several instances starting at once
+/// would race, and a migration that takes a lock would hold up the deployment, so a real
+/// deployment runs migrations as their own step before the new version starts — which is exactly
+/// what having them as migrations rather than EnsureCreated makes possible.
 /// </summary>
 public class DatabaseInitialiser
 {
@@ -35,7 +37,7 @@ public class DatabaseInitialiser
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await dbContext.Database.MigrateAsync(cancellationToken);
 
         if (!await dbContext.Agents.AnyAsync(cancellationToken))
         {
