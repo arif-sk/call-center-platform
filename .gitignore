@@ -1,0 +1,20 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# Prototype runtime artifacts
+*.db
+*.db-shm
+*.db-wal
+
+# Angular
+node_modules/
+.angular/
+dist/
+
+# NOTE: prototype/src/CallCenter.Api/wwwroot is the Angular build output and IS committed,
+# so `dotnet run` alone starts a working demo without an npm install. Rebuild it with
+# `npm run build` in prototype/src/CallCenter.Web.

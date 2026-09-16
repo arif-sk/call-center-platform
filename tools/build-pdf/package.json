@@ -1,0 +1,13 @@
+{
+  "name": "callcenter-docs",
+  "private": true,
+  "type": "module",
+  "description": "Renders the design documents to PDF.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "marked": "^18.0.13",
+    "mermaid": "^11.17.2"
+  }
+}
